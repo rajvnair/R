@@ -1,0 +1,38 @@
+library(datasets)
+library(dplyr)
+
+
+head(airquality)
+
+#filtering by where temperature > 70
+filter(airquality,Temp>70)
+
+filter(airquality,Temp>70 & Month>5)
+
+#displaying temp in celcius
+mutate(airquality, TempInC = (Temp - 32) * 5 / 9)
+
+#summarise a column
+summarise(airquality, mean(Temp, na.rm = TRUE))
+
+#summarise the data by a column
+summarise(group_by(airquality,Month),mean(Temp,na.rm = TRUE))
+
+#selects 10 rows randomly
+sample_n(airquality, size = 10)
+
+#selects 10% of the sample
+sample_frac(airquality, size = 0.1)
+
+#count function by a column
+count(airquality, Month)
+
+#custom sort
+arrange(airquality,desc(Month),Day)
+
+#Piping-in order to do multiple commands in single instance
+airquality %>% 
+    filter(Month != 5) %>% 
+    group_by(Month) %>% 
+    summarise(mean(Temp, na.rm = TRUE))
+
