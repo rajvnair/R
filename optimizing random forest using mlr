@@ -1,0 +1,69 @@
+library(mlr)
+library(randomForest)
+data=read.csv("attrition.v1.csv",header=T,sep=",")
+data
+
+
+names(data)
+data=data[,c("Location","Designation","Gender","age.joining","Marital.Status",
+"Epiexp","Prevexp","Exp.category","Qualification.type","LDB","Salary","sup","Reason")]
+
+
+set.seed(25)
+smp_size=floor(0.70*nrow(data))
+train_ind=sample(seq_len(nrow(data)),size=smp_size)
+
+train=data[train_ind,]
+test=data[-train_ind,]
+
+
+
+
+
+trainTask <- makeClassifTask(data = train,target = "Reason")
+testTask <- makeClassifTask(data = test, target = "Reason")
+
+
+library(FSelector)
+#Feature importance
+im_feat <- generateFilterValuesData(trainTask, method = c("information.gain","chi.squared"))
+plotFilterValues(im_feat,n.show = 20)
+
+getParamSet("classif.randomForest")
+
+#create a learner
+rf <- makeLearner("classif.randomForest", predict.type = "response", par.vals = list(ntree = 200, mtry = 3))
+rf$par.vals <- list(
+importance = TRUE
+)
+
+#set tunable parameters
+#grid search to find hyperparameters
+rf_param <- makeParamSet(
+makeIntegerParam("ntree",lower = 50, upper = 500),
+makeIntegerParam("mtry", lower = 3, upper = 10),
+makeIntegerParam("nodesize", lower = 10, upper = 50)
+)
+
+#let's do random search for 50 iterations
+rancontrol <- makeTuneControlRandom(maxit = 50L)
+
+#set 3 fold cross validation
+set_cv <- makeResampleDesc("CV",iters = 3L)
+
+#hypertuning
+rf_tune <- tuneParams(learner = rf, resampling = set_cv,
+	 task = trainTask, par.set = rf_param, control = rancontrol,
+	 measures = acc)
+#using hyperparameters for modeling
+rf.tree <- setHyperPars(rf, par.vals = rf_tune$x)
+
+#train a model
+rforest <- train(rf.tree, trainTask)
+
+
+
+#make predictions
+rfmodel <- predict(rforest, testTask)
+
+table(test$Reason,rfmodel$data$response)
