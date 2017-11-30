@@ -1,0 +1,71 @@
+install.packages("DMwR")
+library(DMwR) #to implement SMOTE
+library(ROSE)
+
+#this is cleaned data after introducing dummy variables
+#-----------------------------------------------------------
+
+data=read.table("empclean.csv",header=T,sep=',')
+
+#dividing the dataset into train and test data for cross validation
+#-------------------------------------------------------------------
+set.seed(10)
+smp_size=floor(0.70*nrow(data))
+train_ind=sample(seq_len(nrow(data)),size=smp_size)
+
+traindata=data[train_ind,]
+test=data[-train_ind,]
+
+#proportion of target variable
+#------------------------------
+prop.table(table(traindata$Attrition))*100
+
+#implementing SMOTE in the train data
+#----------------------------------------
+
+traindata$Attrition=as.factor(traindata$Attrition)
+trainSMOTE=SMOTE(Attrition~.,traindata,k=3)
+prop.table(table(trainSMOTE$Attrition))*100
+
+#now fitting logistic model on SMOTE
+#-------------------------------------
+fitSMOTE=step(glm(Attrition~., data=trainSMOTE, family=binomial))
+summary(fitSMOTE)
+table(trainSMOTE$Attrition)
+trainSMOTE$scores=predict(fitSMOTE,type="response")
+
+#finding the optimal cut value
+#-----------------------------
+cutpoints=seq(0,1,0.01)
+length(cutpoints)
+
+sensitivity=seq(1,101,1)
+specificity=seq(1,101,1)
+trainSMOTE$Attrition1=as.numeric(as.character(trainSMOTE$Attrition))
+
+cutpoint_perf=cbind(cutpoints,sensitivity,specificity)
+
+for(i in 1:101)
+{
+predicted=ifelse(trainSMOTE$scores<cutpoint_perf[i,1],0,1)
+
+summed=predicted+trainSMOTE$Attrition1
+pred_1=ifelse(summed==2,1,0)
+correct_1=sum(pred_1)
+pred_0=ifelse(summed==0,1,0)
+correct_0=sum(pred_0)
+cutpoint_perf[i,2]=correct_1/498
+cutpoint_perf[i,3]=correct_0/664
+}
+
+cutvalue_table=data.frame(cutpoint_perf)
+cutvalue_table$diff=abs(cutvalue_table$sensitivity-cutvalue_table$specificity)
+min(cutvalue_table$diff)
+
+trainval=ifelse(trainSMOTE$scores<0.44,0,1)
+table(trainSMOTE$Attrition1,trainval)
+
+testscores=predict(fitSMOTE,newdata=test)
+testval=ifelse(testscores<0.44,0,1)
+table(test$Attrition,testval)
+roc.curve(test$Attrition,testval, plotit = T)
