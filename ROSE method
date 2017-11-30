@@ -1,0 +1,70 @@
+
+library(ROSE)
+
+#this is cleaned data after introducing dummy variables
+#-----------------------------------------------------------
+
+data=read.table("empclean.csv",header=T,sep=',')
+
+#dividing the dataset into train and test data for cross validation
+#-------------------------------------------------------------------
+set.seed(10)
+smp_size=floor(0.70*nrow(data))
+train_ind=sample(seq_len(nrow(data)),size=smp_size)
+
+traindata=data[train_ind,]
+test=data[-train_ind,]
+
+#proportion of target variable
+#------------------------------
+prop.table(table(traindata$Attrition))*100
+
+#implementing ROSE in the train data
+#----------------------------------------
+
+traindata$Attrition=as.factor(traindata$Attrition)
+trainROSE= ROSE(Attrition ~ ., data = traindata,seed=1)$data
+prop.table(table(trainROSE$Attrition))*100
+
+#now fitting logistic model on ROSE
+#-------------------------------------
+fitROSE=step(glm(Attrition~., data=trainROSE, family=binomial))
+summary(fitROSE)
+table(trainROSE$Attrition)
+trainROSE$scores=predict(fitROSE,type="response")
+
+#finding the optimal cut value
+#-----------------------------
+cutpoints=seq(0,1,0.01)
+length(cutpoints)
+
+sensitivity=seq(1,101,1)
+specificity=seq(1,101,1)
+trainROSE$Attrition1=as.numeric(as.character(trainROSE$Attrition))
+
+cutpoint_perf=cbind(cutpoints,sensitivity,specificity)
+
+for(i in 1:101)
+{
+predicted=ifelse(trainROSE$scores<cutpoint_perf[i,1],0,1)
+
+summed=predicted+trainROSE$Attrition1
+pred_1=ifelse(summed==2,1,0)
+correct_1=sum(pred_1)
+pred_0=ifelse(summed==0,1,0)
+correct_0=sum(pred_0)
+cutpoint_perf[i,2]=correct_1/496
+cutpoint_perf[i,3]=correct_0/533
+}
+
+cutvalue_table=data.frame(cutpoint_perf)
+cutvalue_table$diff=abs(cutvalue_table$sensitivity-cutvalue_table$specificity)
+min(cutvalue_table$diff)
+
+trainval=ifelse(trainROSE$scores<0.47,0,1)
+table(trainval,trainROSE$Attrition1)
+
+testscores=predict(fitROSE,newdata=test)
+testval=ifelse(testscores<0.47,0,1)
+table(test$Attrition,testval)
+roc.curve(test$Attrition,testval, plotit = T)
