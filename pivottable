@@ -1,0 +1,10 @@
+library(rpivotTable)
+library(htmlwidgets)
+
+data(mtcars)
+rpivotTable(mtcars,rows="gear", cols=c("cyl","carb"),width="100%", height="400px")
+
+
+data(HairEyeColor)
+rpivotTable(data = HairEyeColor, rows = "Hair",cols="Eye", vals = 2, aggregatorName = "Sum", rendererName = "Table", width="100%", height="400px")
+
