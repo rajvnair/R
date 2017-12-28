@@ -35,4 +35,46 @@ airquality %>%
     filter(Month != 5) %>% 
     group_by(Month) %>% 
     summarise(mean(Temp, na.rm = TRUE))
+    
+    
+library(nycflights13)
+flights
+library(dplyr)
+
+# more on select function
+select(flights, -(year:day))
+select(flights, tail_num = tailnum)
+
+#selects column name and those ending with color
+starwars %>% 
+  select(name, ends_with("color"))
+
+
+head(starwars)
+
+
+starwars %>% 
+  filter(species == "Droid")
+
+
+
+starwars %>% 
+  mutate(name,bmi = mass / ((height / 100)  ^ 2))%>%
+  select(name:mass, bmi)
+
+
+
+genes = paste('MMP', sprintf("%04d",1:10), sep="")
+
+
+install.packages('tables')
+library(reshape)
+library(tables)
+data=read.csv("C:\\Users\\INTN008\\Desktop\\aetna_medicare.csv",header=T,sep=",")
+
+tabular(cast(data, age.group ~ dx,c(mean)))
+
+tapply(data$age.group,data$dx,count)
+
+    
 
